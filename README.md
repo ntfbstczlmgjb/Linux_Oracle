@@ -1,85 +1,111 @@
-# Linux_Oracle
-Oracle Database installation guide on CentOS Linux
-# インストール
-オフィシャルから「5.7.15」をダウンロード「Red Hat Enterprise Linux / Oracle Linux」
-・common
-・libs
-・client
-・server
-の4つあればインストールできる。
+### 前準備１（必須）
+自分のIPとホスト名を追加
+```
+hostname -i
+nano /etc/hosts
+```
+---
+### 前準備２（必須）
+IP・NICの設定
+[Network　ネットワーク　NIC](:/62b9233c457c49ab87bef3aae376650b)
+これを実行しないとLISTENERの設定でコケる
+忘れた場合、一度再起動すれば設定しなおせる。
+続けてやろうとするとキャッシュが残っている為設定が中途半端になる。
 
-状況にもよるけど、conflict(競合)が発生したら「--replacefiles」で置き換えする
-なぜ発生するかは不明。インストールされていないはずなのに・・・
+---
+### 前準備３（必須）
+Desktopインストール
+これはxフォrワーディングすれば不要
 
-```
-# rpm -ivh --replacefiles パッケージ
-```
+---
+### 前準備４（有ると便利）
+リードラインワードラッパー（rlwrap)のインストール
 
-# 設定
-```
-# mysql_secure_installation
-```
-rootのパスワードはログを確認
-```
-# nano /var/log/mysqld.log
-```
-キーワード「temporary password」
+---
+# インストール（オフィシャルのマニュアルで）
+手順書：[pdf](:/f511e7f56e554676affb6e420b105c3e)
 
-ログイン後、rootのパスワード変更
-条件、８文字以上、大文字、小文字、数字、記号
+手順全て終わったら、ＯＳ再起動（書いてないけど）
 
-あとは質問に「Yes/No」で完了
+---
+## ＤＢ接続テスト
+おそらく失敗する
+```
+$ sqlplus
+ユーザー名を入力してください：sys@orcl as sysdba
+ORA-12541: TNS: リスナーがありません
 
-## ログイン
+原因はＤＢが「startup」していない。
+「lsnrctl」でインスタンスの起動を確認しても無駄
 ```
-# mysql -u root -p
-```
-ポスグレみたいにsuしなくていいの？
-なんで？
-
-## ユーザー作成
-本番はデータ移行するので必要ないかも、でもDB初期化でrootのリモートログイン否にしたのでテスト接続用にユーザーを作る
-
-```
-create user ユーザー名 identified by 'パスワード'
-```
-
-```
-grant all on *.* to ユーザー 
-```
-
-## パスワード制限の変更
-```
-mysql> show variables like 'validate_password%'
-```
-で確認
-```
-パスワードのレベル変更
-mysql> set global validate_password_policy=low;
-```
-で変更
+## ＤＢ起動
+[ＤＢ起動](:/65cf787a4ad142e19d69eb6b6890c2e3)
 
 
-## iptable追加・ファイヤーウォール追加
-```
-# nano /etc/sysconfig/iptables
-```
-ポート：3306
+## リスナ確認
+[リスナー](:/6183635500714985941158274460a2db)
 
-再起動
-```
-# /etc/rc.d/init.d/iptables restart
-```
+## リスナ経由でＤＢ起動
+[プラガブル操作](:/3ff143ec5d7a4b72a9979ca4c278c67e)
 
-# データのダンプ・エクスポート
-```
-mysqldump -u root -p -h localhost -A > d:\mysql.dmp
-```
+---
+### 追加情報
+[DBサーバをCentOS化](:/27749e1b8f764840a9eb398c5fc7c264)
+に手順のPDFがある
+ヒントも少しある
 
-# データのロード
-```
-mysql -u root -p DB名 < ダンプファイル
-```
-ロード完了後、DB再起動
+---
+## プラガブルを起動と連動させる
+[起動と連動してPDB起動](:/b1666cd1a72b4867b53b5fd6065191e9)
 
-ダンプとロードでコマンドが違う
+---
+
+### DB起動
+インストール直後なら起動している
+[URL](https://docs.oracle.com/cd/E57425_01/121/UNXAR/strt_stp.htm)
+【下にも同じURLある】
+
+
+### サーバー起動時にOracleを連動して起動する
+```
+touch /etc/init.d/dbora
+
+こぴぺ
+#! /bin/sh 
+# description: Oracle auto start-stop script.
+#
+# Set ORACLE_HOME to be equivalent to the $ORACLE_HOME
+# from which you wish to execute dbstart and dbshut;
+#
+# Set ORA_OWNER to the user id of the owner of the
+# Oracle database in ORACLE_HOME.
+
+ORA_HOME=<Type your ORACLE_HOME in full path here>
+ORA_OWNER=<Type your Oracle account name here>
+
+case "$1" in
+'start')
+    # Start the Oracle databases:
+    # The following command assumes that the oracle login
+    # will not prompt the user for any values
+    # Remove "&" if you don't want startup as a background process.
+    su - $ORA_OWNER -c "$ORA_HOME/bin/dbstart $ORA_HOME" &
+    touch /var/lock/subsys/dbora
+    ;;
+
+'stop')
+    # Stop the Oracle databases:
+    # The following command assumes that the oracle login
+    # will not prompt the user for any values
+    su - $ORA_OWNER -c "$ORA_HOME/bin/dbshut $ORA_HOME" &
+    rm -f /var/lock/subsys/dbora
+    ;;
+esac
+
+
+コマンド実行
+# ln -s /etc/init.d/dbora /etc/rc.d/rc0.d/K01dbora
+# ln -s /etc/init.d/dbora /etc/rc.d/rc3.d/S99dbora
+# ln -s /etc/init.d/dbora /etc/rc.d/rc5.d/S99dbora
+
+```

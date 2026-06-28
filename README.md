@@ -7,10 +7,48 @@ nano /etc/hosts
 ---
 ### 前準備２（必須）
 IP・NICの設定
-[Network　ネットワーク　NIC](:/62b9233c457c49ab87bef3aae376650b)
 これを実行しないとLISTENERの設定でコケる
 忘れた場合、一度再起動すれば設定しなおせる。
 続けてやろうとするとキャッシュが残っている為設定が中途半端になる。
+
+## IP・NICの設定（その１）
+```
+# /etc/rc.d/init.d/network status
+# /etc/rc.d/init.d/network stop
+# /etc/rc.d/init.d/network start
+# /etc/rc.d/init.d/network restart
+```
+## IP・NICの設定（その２）
+```
+# ifconfig eth0 up
+# ifconfig eth0 down
+```
+
+## IP・NICの設定（その３）
+```
+# ifup
+# ifdown
+```
+
+## IPv6無効化
+やりかたが色々ある・・・
+```
+/etc/sysctl.conf
+の一番下に下記を追加する
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+```
+
+## 起動時にネットワークインターフェイス起動
+```
+# nano /etc/sysconfig/network-scripts/ifcfg-eth0
+下記を追記（無ければ）
+ONBOOT=yes
+IPV6INIT=no (IPv6の無効化設定は他にもあり)
+```
+その他にもサービスとして登録されているかも確認する
+
+
 
 ---
 ### 前準備３（必須）
